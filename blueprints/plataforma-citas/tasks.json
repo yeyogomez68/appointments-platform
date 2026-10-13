@@ -58,7 +58,7 @@
       "backend/src/test/java/archfixtures/baddomain/domain/BadDomainEntity.java",
       "docs/modules/README.md"
     ],
-    "status": "pending"
+    "status": "done"
   },
   {
     "id": "E1-T3",

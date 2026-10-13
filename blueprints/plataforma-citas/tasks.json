@@ -180,7 +180,7 @@
       "backend/src/main/java/com/plataformacitas/shared/security/SecurityConfig.java",
       "backend/src/test/java/com/plataformacitas/identity/IdentityPersistenceIT.java"
     ],
-    "status": "pending"
+    "status": "done"
   },
   {
     "id": "E2-T1",

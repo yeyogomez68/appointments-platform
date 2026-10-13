@@ -149,7 +149,7 @@
       "backend/src/main/java/com/plataformacitas/vertical/peluqueria/PeluqueriaVerticalSeed.java",
       "backend/src/test/java/com/plataformacitas/platform/ProvisioningIT.java"
     ],
-    "status": "pending"
+    "status": "done"
   },
   {
     "id": "E1-T6",

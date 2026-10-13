@@ -65,6 +65,8 @@ management:
 springdoc:
   api-docs:
     path: /v3/api-docs
+  # Sin esto el contrato declara */* y ng-openapi-gen genera clientes que leen la respuesta como Blob.
+  default-produces-media-type: application/json
   writer-with-order-by-keys: true
   writer-with-default-pretty-printer: true
 

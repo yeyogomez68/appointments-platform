@@ -213,7 +213,7 @@
       "backend/src/test/java/com/plataformacitas/support/TestData.java",
       "backend/src/test/java/com/plataformacitas/identity/TokenServiceIT.java"
     ],
-    "status": "pending"
+    "status": "done"
   },
   {
     "id": "E2-T2",

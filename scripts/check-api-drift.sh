@@ -20,8 +20,8 @@ if ! (cd frontend && npx ng-openapi-gen -c ng-openapi-gen.json --input "../$WORK
   exit 2
 fi
 drift=0
-diff -q "$WORK/openapi.json" frontend/openapi/openapi.json >/dev/null || { echo "Deriva: frontend/openapi/openapi.json no coincide con el backend" >&2; drift=1; }
-diff -r -q "$WORK/api" frontend/src/app/api >/dev/null || { echo "Deriva: frontend/src/app/api no coincide con el contrato" >&2; drift=1; }
+diff -q --strip-trailing-cr "$WORK/openapi.json" frontend/openapi/openapi.json >/dev/null || { echo "Deriva: frontend/openapi/openapi.json no coincide con el backend" >&2; drift=1; }
+diff -r -q --strip-trailing-cr "$WORK/api" frontend/src/app/api >/dev/null || { echo "Deriva: frontend/src/app/api no coincide con el contrato" >&2; drift=1; }
 if [ "$drift" -eq 0 ]; then
   echo "Contrato y cliente al día"
 else

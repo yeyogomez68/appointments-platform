@@ -274,7 +274,7 @@
       "backend/src/test/java/com/plataformacitas/ArchitectureRulesTest.java",
       "backend/src/test/java/archfixtures/rogue/RogueEntity.java"
     ],
-    "status": "pending"
+    "status": "done"
   },
   {
     "id": "E2-T4",

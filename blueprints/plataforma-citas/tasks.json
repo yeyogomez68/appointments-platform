@@ -26,7 +26,7 @@
       "backend/src/main/resources/db/migration/V1__shared_baseline.sql",
       "backend/src/test/java/com/plataformacitas/FoundationIT.java"
     ],
-    "status": "pending"
+    "status": "done"
   },
   {
     "id": "E1-T2",

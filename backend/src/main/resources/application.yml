@@ -1,0 +1,146 @@
+# Configuración de la API (blueprint §10 y §19.6).
+# Secretos y valores por ambiente: variables de entorno. En local, Spring importa ../.env (raíz del repo)
+# porque ./mvnw y java -jar se ejecutan desde backend/. En contenedores el archivo no existe (import opcional).
+spring:
+  application:
+    name: plataforma-citas-api
+  config:
+    import: "optional:file:../.env[.properties]"
+  profiles:
+    default: dev
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/citas}
+    username: app_runtime
+    password: ${DB_RUNTIME_PASSWORD:}
+    hikari:
+      maximum-pool-size: 10
+  flyway:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/citas}
+    user: app_owner
+    password: ${DB_OWNER_PASSWORD:}
+    locations: classpath:db/migration
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  mail:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:1025}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${SMTP_AUTH:false}
+          starttls:
+            enable: ${SMTP_STARTTLS:false}
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
+server:
+  port: ${PORT:8080}
+  error:
+    include-stacktrace: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+  health:
+    mail:
+      enabled: false
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  writer-with-order-by-keys: true
+  writer-with-default-pretty-printer: true
+
+logging:
+  pattern:
+    console: "%d{HH:mm:ss.SSS} %-5level [%X{requestId:-}] [%X{businessId:-}] %logger{36} - %msg%n"
+
+app:
+  base-url: ${APP_BASE_URL:http://localhost:4200}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
+  cookie:
+    secure: ${COOKIE_SECURE:true}
+  jwt:
+    secret: ${JWT_SECRET:}
+    issuer: plataforma-citas
+    access-ttl: PT15M
+    preauth-ttl: PT2M
+    refresh-ttl: P14D
+  tokens:
+    verify-email-ttl: PT24H
+    reset-password-ttl: PT1H
+    invitation-ttl: P7D
+  email:
+    provider: ${EMAIL_PROVIDER:smtp}
+    from: ${EMAIL_FROM:no-responder@plataforma-citas.local}
+  captcha:
+    provider: ${CAPTCHA_PROVIDER:turnstile}
+    site-key: ${TURNSTILE_SITE_KEY:}
+    secret: ${TURNSTILE_SECRET:}
+    verify-url: https://challenges.cloudflare.com/turnstile/v0/siteverify
+  rate-limit:
+    login-failures-per-minute: 10
+    signup-per-hour: ${SIGNUP_LIMIT_PER_HOUR:5}
+    forgot-password-per-hour: 5
+    forgot-password-per-email-per-hour: 3
+  legal:
+    terms-version: ${LEGAL_TERMS_VERSION:borrador-2026-10}
+    dpa-version: ${LEGAL_DPA_VERSION:borrador-2026-10}
+  trial-days: 30
+  seed:
+    demo: ${APP_SEED_DEMO:false}
+    demo-password: ${DEV_SEED_PASSWORD:}
+
+sentry:
+  dsn: ${SENTRY_DSN:}
+  environment: ${APP_ENV:local}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+app:
+  cookie:
+    secure: false
+  captcha:
+    provider: fake
+  rate-limit:
+    signup-per-hour: 100
+  seed:
+    demo: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+server:
+  forward-headers-strategy: native
+logging:
+  structured:
+    format:
+      console: ecs
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

@@ -1,0 +1,38 @@
+# Servicios locales de desarrollo y de las verificaciones (blueprint §10 y §19.6).
+# Uso: docker compose up -d --wait db mailpit   ·   docker compose down   ·   reset: docker compose down -v
+# Las contraseñas vienen de .env (lo crea node scripts/init-env.mjs). La API y el frontend corren fuera de Docker.
+name: plataforma-citas
+
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: citas
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_SUPERUSER_PASSWORD:?falta DB_SUPERUSER_PASSWORD en .env (corre node scripts/init-env.mjs)}
+      APP_OWNER_PASSWORD: ${DB_OWNER_PASSWORD:?falta DB_OWNER_PASSWORD en .env}
+      APP_RUNTIME_PASSWORD: ${DB_RUNTIME_PASSWORD:?falta DB_RUNTIME_PASSWORD en .env}
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql
+      - ./infra/db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d citas"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  mailpit:
+    image: axllent/mailpit:v1.31.5
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  db-data:

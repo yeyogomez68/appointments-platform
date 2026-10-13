@@ -1,0 +1,88 @@
+# Pila de staging/producción en el VPS (blueprint §12). Mismo archivo para ambos; cambia solo el .env.
+# En el servidor: /opt/plataforma-citas/{deploy/compose.prod.yml, deploy/Caddyfile, infra/db/init/01-roles.sh, .env}
+#   docker compose -f deploy/compose.prod.yml --env-file .env pull
+#   docker compose -f deploy/compose.prod.yml --env-file .env up -d --wait
+# Localmente lo ejercita scripts/smoke-prod-stack.sh (proyecto "citas-smoke").
+name: plataforma-citas
+
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: citas
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_SUPERUSER_PASSWORD:?falta DB_SUPERUSER_PASSWORD}
+      APP_OWNER_PASSWORD: ${DB_OWNER_PASSWORD:?falta DB_OWNER_PASSWORD}
+      APP_RUNTIME_PASSWORD: ${DB_RUNTIME_PASSWORD:?falta DB_RUNTIME_PASSWORD}
+    volumes:
+      - db-data:/var/lib/postgresql
+      - ../infra/db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d citas"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    mem_limit: 1g
+
+  api:
+    image: ${API_IMAGE:?falta API_IMAGE}
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:postgresql://db:5432/citas
+      DB_OWNER_PASSWORD: ${DB_OWNER_PASSWORD:?falta DB_OWNER_PASSWORD}
+      DB_RUNTIME_PASSWORD: ${DB_RUNTIME_PASSWORD:?falta DB_RUNTIME_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET:?falta JWT_SECRET}
+      COOKIE_SECURE: "true"
+      APP_BASE_URL: ${APP_BASE_URL:?falta APP_BASE_URL}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?falta CORS_ALLOWED_ORIGINS}
+      EMAIL_PROVIDER: smtp
+      EMAIL_FROM: ${EMAIL_FROM:?falta EMAIL_FROM}
+      SMTP_HOST: ${SMTP_HOST:?falta SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT:?falta SMTP_PORT}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_AUTH: ${SMTP_AUTH:-true}
+      SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
+      CAPTCHA_PROVIDER: ${CAPTCHA_PROVIDER:-turnstile}
+      TURNSTILE_SITE_KEY: ${TURNSTILE_SITE_KEY:?falta TURNSTILE_SITE_KEY}
+      TURNSTILE_SECRET: ${TURNSTILE_SECRET:?falta TURNSTILE_SECRET}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      APP_ENV: ${APP_ENV:-staging}
+      APP_SEED_DEMO: ${APP_SEED_DEMO:-false}
+      DEV_SEED_PASSWORD: ${DEV_SEED_PASSWORD:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8080/actuator/health | grep -q UP"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 60s
+    mem_limit: 1g
+
+  web:
+    image: ${WEB_IMAGE:?falta WEB_IMAGE}
+    restart: unless-stopped
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?falta SITE_ADDRESS}
+      BASIC_AUTH_USER: ${BASIC_AUTH_USER:?falta BASIC_AUTH_USER}
+      BASIC_AUTH_HASH: ${BASIC_AUTH_HASH:?falta BASIC_AUTH_HASH}
+    ports:
+      - "${CADDY_HTTP_PORT:-80}:80"
+      - "${CADDY_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+    mem_limit: 256m
+
+volumes:
+  db-data:
+  caddy-data:
+  caddy-config:

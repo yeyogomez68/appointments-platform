@@ -1,0 +1,26 @@
+# Perfil "test": lo activa IntegrationTest con @ActiveProfiles("test").
+# La base de datos la inyecta IntegrationTest (@DynamicPropertySource) desde Testcontainers.
+# Nada aquí depende de .env: los valores son literales de prueba.
+app:
+  base-url: http://localhost:4200
+  cors:
+    allowed-origins: http://localhost:4200
+  cookie:
+    secure: false
+  jwt:
+    secret: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+  email:
+    provider: fake
+  captcha:
+    provider: fake
+    site-key: ""
+    secret: ""
+  rate-limit:
+    signup-per-hour: 5
+  seed:
+    demo: false
+
+logging:
+  level:
+    root: WARN
+    com.plataformacitas: INFO

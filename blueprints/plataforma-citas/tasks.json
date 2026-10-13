@@ -1,0 +1,568 @@
+[
+  {
+    "id": "E1-T1",
+    "title": "Esqueleto backend que arranca contra PostgreSQL con roles",
+    "epic": "01-fundacion-datos",
+    "dependencies": [],
+    "priority": "p0",
+    "acceptance": [
+      "WHEN `./mvnw -B -ntp -DskipTests package` runs in `backend/` THE SYSTEM SHALL exit 0 and produce `backend/target/plataforma-citas-api.jar`.",
+      "WHEN `bash scripts/smoke-api.sh` starts that jar against the `db` service of `docker-compose.yml` THE SYSTEM SHALL answer `GET /actuator/health` with HTTP 200 and a JSON body whose `status` is `UP`.",
+      "WHEN the API boots THE SYSTEM SHALL apply Flyway migration `V1__shared_baseline.sql` as `app_owner`, so `pg_tables` reports `app_owner` as owner of `schema_info`.",
+      "WHEN `FoundationIT` queries through the application DataSource THE SYSTEM SHALL report `current_user` = `app_runtime`, `rolsuper` = false, `rolbypassrls` = false and zero tables in schema `public` owned by `app_runtime`.",
+      "WHEN `FoundationIT` runs `CREATE TABLE` as `app_runtime` THE SYSTEM SHALL fail with SQLState `42501`, while `SELECT value FROM schema_info WHERE key = 'baseline'` returns `plataforma-citas`.",
+      "WHEN an anonymous request hits any path other than `/actuator/health` or `/api/v1/public/**` THE SYSTEM SHALL answer HTTP 401."
+    ],
+    "verify": [
+      "(cd backend && ./mvnw -B -ntp -DskipTests package)   # expect: exit 0, BUILD SUCCESS",
+      "test -f backend/target/plataforma-citas-api.jar   # expect: exit 0",
+      "(cd backend && ./mvnw -B -ntp test -Dtest=FoundationIT)   # expect: exit 0, BUILD SUCCESS, Failures: 0, Errors: 0",
+      "bash scripts/smoke-api.sh   # expect: exit 0, imprime \"health: UP\" y \"SMOKE API OK\""
+    ],
+    "checkpoint": "step-01-esqueleto",
+    "files": [
+      "backend/src/main/java/com/plataformacitas/CitasApplication.java",
+      "backend/src/main/java/com/plataformacitas/shared/security/SecurityConfig.java",
+      "backend/src/main/resources/db/migration/V1__shared_baseline.sql",
+      "backend/src/test/java/com/plataformacitas/FoundationIT.java"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E1-T2",
+    "title": "Reglas de módulos (Modulith) y ArchUnit con plantilla",
+    "epic": "01-fundacion-datos",
+    "dependencies": [
+      "E1-T1"
+    ],
+    "priority": "p0",
+    "acceptance": [
+      "WHEN `ModularityTest` runs THE SYSTEM SHALL pass `ApplicationModules.of(CitasApplication.class).verify()`, with module `shared` declared `@ApplicationModule(type = ApplicationModule.Type.OPEN)` in `shared/package-info.java`.",
+      "WHEN `ArchitectureRulesTest` checks rule `DOMAIN_IS_PURE` against fixture `archfixtures.baddomain.domain.BadDomainEntity`, which imports `jakarta.persistence`, THE SYSTEM SHALL report a violation (the test asserts the `AssertionError`).",
+      "WHEN `ArchitectureRulesTest` checks `DOMAIN_IS_PURE`, `APPLICATION_WITHOUT_ADAPTERS` and `VERTICAL_NAMES_STAY_IN_VERTICAL` against production classes of `com.plataformacitas` THE SYSTEM SHALL report zero violations.",
+      "WHEN `docs/modules/README.md` is read THE SYSTEM SHALL contain the headings `## Estructura de un módulo`, `## Hexagonal completa`, `## Módulo ligero` and `## Reglas verificadas`."
+    ],
+    "verify": [
+      "(cd backend && ./mvnw -B -ntp test -Dtest='ModularityTest,ArchitectureRulesTest')   # expect: exit 0, Failures: 0, Errors: 0",
+      "grep -q '^## Estructura de un módulo' docs/modules/README.md   # expect: exit 0",
+      "grep -q '^## Hexagonal completa' docs/modules/README.md   # expect: exit 0",
+      "grep -q '^## Módulo ligero' docs/modules/README.md   # expect: exit 0",
+      "grep -q '^## Reglas verificadas' docs/modules/README.md   # expect: exit 0",
+      "(cd backend && ./mvnw -B -ntp verify)   # expect: exit 0, BUILD SUCCESS — los pasos anteriores siguen verdes"
+    ],
+    "checkpoint": "step-02-arquitectura",
+    "files": [
+      "backend/src/main/java/com/plataformacitas/shared/package-info.java",
+      "backend/src/test/java/com/plataformacitas/ModularityTest.java",
+      "backend/src/test/java/com/plataformacitas/ArchitectureRulesTest.java",
+      "backend/src/test/java/archfixtures/baddomain/domain/BadDomainEntity.java",
+      "docs/modules/README.md"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E1-T3",
+    "title": "Kernel: Money, errores ProblemDetail e id de petición",
+    "epic": "01-fundacion-datos",
+    "dependencies": [
+      "E1-T1"
+    ],
+    "priority": "p0",
+    "acceptance": [
+      "WHEN `Money.of(1000, \"COP\").plus(Money.of(500, \"USD\"))` runs THE SYSTEM SHALL throw `DomainException` with code `CURRENCY_MISMATCH`.",
+      "WHEN `Money.ofMajor(new BigDecimal(\"10.005\"), \"USD\")` and `Money.ofMajor(new BigDecimal(\"10.015\"), \"USD\")` run THE SYSTEM SHALL return 1000 and 1002 minor units respectively (HALF_EVEN to the currency's default fraction digits).",
+      "WHEN a request body fails bean validation THE SYSTEM SHALL answer 400 `application/problem+json` with `code` = `VALIDATION_ERROR` and an `errors` array of `{field, message}` naming every invalid field.",
+      "WHEN a handler throws `DomainException` with code `NOT_FOUND` THE SYSTEM SHALL answer 404 with a problem body carrying `code`, `title`, `detail` and `requestId`.",
+      "WHEN a `DataIntegrityViolationException` caused by SQLState `23P01` escapes a handler THE SYSTEM SHALL answer 409 with `code` = `SLOT_TAKEN`.",
+      "WHEN a request carries `X-Request-Id: abc-123` THE SYSTEM SHALL return response header `X-Request-Id: abc-123` and `requestId` = `abc-123` in any problem body, and without that header it SHALL return a generated UUID."
+    ],
+    "verify": [
+      "(cd backend && ./mvnw -B -ntp test -Dtest=SharedKernelTest)   # expect: exit 0, Failures: 0, Errors: 0",
+      "(cd backend && ./mvnw -B -ntp verify)   # expect: exit 0, BUILD SUCCESS — los pasos anteriores siguen verdes"
+    ],
+    "checkpoint": "step-03-kernel",
+    "files": [
+      "backend/src/main/java/com/plataformacitas/shared/money/Money.java",
+      "backend/src/main/java/com/plataformacitas/shared/error/DomainException.java",
+      "backend/src/main/java/com/plataformacitas/shared/error/ApiExceptionHandler.java",
+      "backend/src/main/java/com/plataformacitas/shared/web/RequestIdFilter.java",
+      "backend/src/test/java/com/plataformacitas/shared/SharedKernelTest.java"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E1-T4",
+    "title": "Aislamiento en dos capas: @TenantId, set_config y RLS",
+    "epic": "01-fundacion-datos",
+    "dependencies": [
+      "E1-T1"
+    ],
+    "priority": "p0",
+    "acceptance": [
+      "WHEN Flyway applies `V2__platform_business.sql` THE SYSTEM SHALL create tables `business`, `subscription`, `location` and `business_settings`, with ENABLE and FORCE ROW LEVEL SECURITY and policy `tenant_isolation` on `location` and `business_settings`.",
+      "WHEN `RowLevelSecurityIT` runs the RLS catalog check over schema `public` THE SYSTEM SHALL find that every table with a `business_id` column, except the allowlist `subscription` and `refresh_token`, has RLS enabled, forced and at least one policy.",
+      "WHEN the same catalog check runs over the session's temporary schema after creating a temp table with a `business_id` column and no policy THE SYSTEM SHALL report that table as unprotected.",
+      "WHEN `app_runtime` reads `location` without `app.business_id` set (outside any transaction) THE SYSTEM SHALL return zero rows, and an `INSERT` into `location` SHALL fail with SQLState `42501`.",
+      "WHEN code runs inside `TenantContext.run(businessA, null, …)` within a Spring transaction THE SYSTEM SHALL see only business A's rows through a native `SELECT count(*) FROM location` without any `WHERE` clause.",
+      "WHEN that transaction has ended and a new transaction without tenant runs on the same pool THE SYSTEM SHALL see zero `location` rows, because `set_config(…, true)` is transaction-local."
+    ],
+    "verify": [
+      "(cd backend && ./mvnw -B -ntp test -Dtest=RowLevelSecurityIT)   # expect: exit 0, Failures: 0, Errors: 0",
+      "(cd backend && ./mvnw -B -ntp verify)   # expect: exit 0, BUILD SUCCESS — los pasos anteriores siguen verdes"
+    ],
+    "checkpoint": "step-04-rls",
+    "files": [
+      "backend/src/main/java/com/plataformacitas/shared/tenancy/TenantContext.java",
+      "backend/src/main/java/com/plataformacitas/shared/tenancy/BusinessScopedEntity.java",
+      "backend/src/main/java/com/plataformacitas/shared/tenancy/TenancyJpaConfig.java",
+      "backend/src/main/resources/db/migration/V2__platform_business.sql",
+      "backend/src/test/java/com/plataformacitas/shared/RowLevelSecurityIT.java"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E1-T5",
+    "title": "Alta de negocio con sede principal y ajustes",
+    "epic": "01-fundacion-datos",
+    "dependencies": [
+      "E1-T3",
+      "E1-T4"
+    ],
+    "priority": "p0",
+    "acceptance": [
+      "WHEN `Businesses.provision` runs for name `Peluquería Doña Ana` and vertical `PELUQUERIA` THE SYSTEM SHALL create one `business` row with slug `peluqueria-dona-ana`, timezone `America/Bogota`, currency `COP` and status `ACTIVE`.",
+      "WHEN a second business named `Peluquería Doña Ana` is provisioned THE SYSTEM SHALL give it slug `peluqueria-dona-ana-2`.",
+      "WHEN a business is provisioned THE SYSTEM SHALL create exactly one `location` row with `is_main` = true and name `Sede principal`, persisted through entity `Location`, which extends `BusinessScopedEntity`.",
+      "WHEN a business is provisioned with a fixed `Clock` at `2026-10-12T15:00:00Z` THE SYSTEM SHALL create a `subscription` row with `plan_code` = `PRO`, `status` = `TRIAL` and `trial_ends_at` = `2026-11-11T15:00:00Z`.",
+      "WHEN a business of vertical `PELUQUERIA` is provisioned THE SYSTEM SHALL write `business_settings` with `slot_step_min` = 15 and `labels` containing `\"resource\": \"Empleado\"`, taken from `PeluqueriaVerticalSeed`.",
+      "WHEN `provision` is called with a vertical that has no registered `Businesses.VerticalSeed` THE SYSTEM SHALL throw `DomainException` with code `VALIDATION_ERROR` and write no `business` row."
+    ],
+    "verify": [
+      "(cd backend && ./mvnw -B -ntp test -Dtest=ProvisioningIT)   # expect: exit 0, Failures: 0, Errors: 0",
+      "(cd backend && ./mvnw -B -ntp verify)   # expect: exit 0, BUILD SUCCESS — los pasos anteriores siguen verdes"
+    ],
+    "checkpoint": "step-05-negocio",
+    "files": [
+      "backend/src/main/java/com/plataformacitas/platform/internal/Business.java",
+      "backend/src/main/java/com/plataformacitas/platform/internal/Location.java",
+      "backend/src/main/java/com/plataformacitas/platform/Businesses.java",
+      "backend/src/main/java/com/plataformacitas/vertical/peluqueria/PeluqueriaVerticalSeed.java",
+      "backend/src/test/java/com/plataformacitas/platform/ProvisioningIT.java"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E1-T6",
+    "title": "Cuentas globales, membresías con RLS y Argon2id",
+    "epic": "01-fundacion-datos",
+    "dependencies": [
+      "E1-T4",
+      "E1-T5"
+    ],
+    "priority": "p0",
+    "acceptance": [
+      "WHEN Flyway applies `V3__identity_accounts.sql` THE SYSTEM SHALL create `user_account`, `membership`, `refresh_token` and `one_time_token`, with RLS enabled and forced on `membership` under policy `membership_access`.",
+      "WHEN `IdentityStore.createAccount` stores a password THE SYSTEM SHALL persist a hash that starts with `$argon2id$` and never the plain text.",
+      "WHEN accounts are created with `Ana@Example.com` and then `ana@example.com` THE SYSTEM SHALL store `ana@example.com` once and reject the second with `DomainException` code `ACCOUNT_EXISTS`.",
+      "WHEN a user is OWNER in business A and EMPLOYEE in business B and only `app.user_id` is set to that user THE SYSTEM SHALL list both memberships.",
+      "WHEN only `app.business_id` is set to business A THE SYSTEM SHALL list the memberships of A and none of B.",
+      "WHEN neither setting is present THE SYSTEM SHALL list zero memberships, and inserting a membership for business B while `app.business_id` = A SHALL fail with SQLState `42501`."
+    ],
+    "verify": [
+      "(cd backend && ./mvnw -B -ntp test -Dtest=IdentityPersistenceIT)   # expect: exit 0, Failures: 0, Errors: 0",
+      "(cd backend && ./mvnw -B -ntp verify)   # expect: exit 0, BUILD SUCCESS — incluye RowLevelSecurityIT con membership protegida"
+    ],
+    "checkpoint": "step-06-cuentas",
+    "files": [
+      "backend/src/main/resources/db/migration/V3__identity_accounts.sql",
+      "backend/src/main/java/com/plataformacitas/identity/internal/UserAccount.java",
+      "backend/src/main/java/com/plataformacitas/identity/internal/IdentityStore.java",
+      "backend/src/main/java/com/plataformacitas/shared/security/SecurityConfig.java",
+      "backend/src/test/java/com/plataformacitas/identity/IdentityPersistenceIT.java"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E2-T1",
+    "title": "JWT de acceso, refresh rotativo y servidor de recursos",
+    "epic": "02-identidad-registro",
+    "dependencies": [
+      "E1-T5",
+      "E1-T6"
+    ],
+    "priority": "p0",
+    "acceptance": [
+      "WHEN `TokenService.issueSession(userId, businessId)` runs for an active membership THE SYSTEM SHALL return an HS256 access JWT with claims `sub` = user id, `bid` = business id, `role` = membership role, `typ` = `access` and an expiry 15 minutes after issue.",
+      "WHEN a session is issued THE SYSTEM SHALL store in `refresh_token` only the SHA-256 hex hash of the opaque refresh token, bound to that user and business.",
+      "WHEN a refresh token is rotated THE SYSTEM SHALL revoke the old row and return a new refresh token in the same `family_id` for the same business.",
+      "WHEN an already-rotated refresh token is presented again THE SYSTEM SHALL fail with code `INVALID_REFRESH_TOKEN` and revoke every token of its family.",
+      "WHEN a request to a non-public `/api/v1/**` path arrives without a token THE SYSTEM SHALL answer 401 `application/problem+json` with code `UNAUTHENTICATED`, and with a valid preauth token it SHALL answer 403 with code `FORBIDDEN`.",
+      "WHEN `JwtConfig.secretKey` receives an empty value or fewer than 64 hexadecimal characters THE SYSTEM SHALL throw `IllegalStateException` whose message names `JWT_SECRET`."
+    ],
+    "verify": [
+      "(cd backend && ./mvnw -B -ntp test -Dtest=TokenServiceIT)   # expect: exit 0, Failures: 0, Errors: 0",
+      "(cd backend && ./mvnw -B -ntp verify)   # expect: exit 0, BUILD SUCCESS — los pasos anteriores siguen verdes",
+      "(cd backend && ./mvnw -B -ntp -DskipTests package)   # expect: exit 0",
+      "bash scripts/smoke-api.sh   # expect: exit 0, \"SMOKE API OK\" — arranca con el JWT_SECRET de .env"
+    ],
+    "checkpoint": "step-07-tokens",
+    "files": [
+      "backend/src/main/java/com/plataformacitas/shared/security/JwtConfig.java",
+      "backend/src/main/java/com/plataformacitas/identity/internal/TokenService.java",
+      "backend/src/main/java/com/plataformacitas/shared/security/SecurityConfig.java",
+      "backend/src/test/java/com/plataformacitas/support/TestData.java",
+      "backend/src/test/java/com/plataformacitas/identity/TokenServiceIT.java"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E2-T2",
+    "title": "Endpoints de login, selección y cambio de negocio",
+    "epic": "02-identidad-registro",
+    "dependencies": [
+      "E2-T1"
+    ],
+    "priority": "p0",
+    "acceptance": [
+      "WHEN `POST /api/v1/auth/login` receives a wrong password or an unknown email THE SYSTEM SHALL answer 401 with code `INVALID_CREDENTIALS` and the same `detail` text in both cases.",
+      "WHEN a verified account with exactly one active membership logs in THE SYSTEM SHALL answer 200 with `status` = `AUTHENTICATED`, a `session.accessToken` whose `bid` claim is that business, and a `Set-Cookie` for `rt` with `HttpOnly`, `SameSite=Strict` and `Path=/api/v1/auth`.",
+      "WHEN an account with active memberships in two businesses logs in THE SYSTEM SHALL answer 200 with `status` and `code` = `BUSINESS_SELECTION_REQUIRED`, both businesses and a `preAuthToken`, and `POST /api/v1/auth/select-business` with that token and business B SHALL return a session whose `bid` is B and whose `role` is the role held in B.",
+      "WHEN an account that is OWNER in A and EMPLOYEE in B calls `POST /api/v1/auth/switch-business` for B THE SYSTEM SHALL return a session with role `EMPLOYEE`, and `GET /api/v1/auth/me` SHALL report business B with role `EMPLOYEE`.",
+      "WHEN `POST /api/v1/auth/refresh` is called with a valid `rt` cookie THE SYSTEM SHALL return a new access token for the same business and rotate the cookie, and after `POST /api/v1/auth/logout` the same cookie SHALL get 401 `INVALID_REFRESH_TOKEN`.",
+      "WHEN an account whose email is not verified logs in with the correct password THE SYSTEM SHALL answer 403 with code `EMAIL_NOT_VERIFIED`."
+    ],
+    "verify": [
+      "(cd backend && ./mvnw -B -ntp test -Dtest=AuthFlowIT)   # expect: exit 0, Failures: 0, Errors: 0",
+      "(cd backend && ./mvnw -B -ntp verify)   # expect: exit 0, BUILD SUCCESS — los pasos anteriores siguen verdes"
+    ],
+    "checkpoint": "step-08-login",
+    "files": [
+      "backend/src/main/java/com/plataformacitas/identity/internal/AuthService.java",
+      "backend/src/main/java/com/plataformacitas/identity/internal/AuthController.java",
+      "backend/src/test/java/com/plataformacitas/identity/AuthFlowIT.java"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E2-T3",
+    "title": "API del negocio, suite de aislamiento y datos demo",
+    "epic": "02-identidad-registro",
+    "dependencies": [
+      "E1-T2",
+      "E2-T2"
+    ],
+    "priority": "p0",
+    "acceptance": [
+      "WHEN the owner of business A calls `GET /api/v1/business` THE SYSTEM SHALL return A's `id`, `name`, `slug`, `timezone`, `currency`, `trialEndsAt` and `labels`, never data of business B.",
+      "WHEN the owner of A calls `PUT /api/v1/business` with a new name THE SYSTEM SHALL rename A and leave B's name unchanged, and WHEN a RECEPTION member of A calls it THE SYSTEM SHALL answer 403 with code `FORBIDDEN`.",
+      "WHEN `PUT /api/v1/business` receives timezone `Mars/Base` or currency `XXXX` THE SYSTEM SHALL answer 400 with code `VALIDATION_ERROR`.",
+      "WHEN `TenantIsolationIT` iterates over every `public` table with a `business_id` column and an RLS policy THE SYSTEM SHALL, inside business A's context, count, update and delete zero rows of business B, and inserting a `location` for B SHALL fail with SQLState `42501`.",
+      "WHEN `ArchitectureRulesTest` checks `ENTITIES_WITH_BUSINESS_ID_ARE_SCOPED` against fixture `archfixtures.rogue.RogueEntity` THE SYSTEM SHALL report a violation, and against production classes it SHALL report none.",
+      "WHEN the API starts with profile `dev` THE SYSTEM SHALL seed once `owner@demo.local` as OWNER of two demo businesses with password `DEV_SEED_PASSWORD`, so `bash scripts/smoke-api.sh --expect-demo` sees `BUSINESS_SELECTION_REQUIRED` with both businesses."
+    ],
+    "verify": [
+      "(cd backend && ./mvnw -B -ntp test -Dtest='TenantIsolationIT,ArchitectureRulesTest')   # expect: exit 0, Failures: 0, Errors: 0",
+      "(cd backend && ./mvnw -B -ntp verify)   # expect: exit 0, BUILD SUCCESS — los pasos anteriores siguen verdes",
+      "(cd backend && ./mvnw -B -ntp -DskipTests package)   # expect: exit 0",
+      "bash scripts/smoke-api.sh --expect-demo   # expect: exit 0, \"demo: BUSINESS_SELECTION_REQUIRED …\" y \"SMOKE API OK\""
+    ],
+    "checkpoint": "step-09-aislamiento",
+    "files": [
+      "backend/src/main/java/com/plataformacitas/platform/internal/BusinessController.java",
+      "backend/src/main/java/com/plataformacitas/identity/internal/DemoDataSeeder.java",
+      "backend/src/test/java/com/plataformacitas/platform/TenantIsolationIT.java",
+      "backend/src/test/java/com/plataformacitas/ArchitectureRulesTest.java",
+      "backend/src/test/java/archfixtures/rogue/RogueEntity.java"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E2-T4",
+    "title": "Antiabuso: Bucket4j, Turnstile, CORS y cabeceras",
+    "epic": "02-identidad-registro",
+    "dependencies": [
+      "E2-T2"
+    ],
+    "priority": "p0",
+    "acceptance": [
+      "WHEN 10 failed logins arrive from one IP within one minute THE SYSTEM SHALL answer the 11th login attempt from that IP with 429 and code `RATE_LIMITED`, even when its password is correct.",
+      "WHEN a request arrives with `Origin: https://evil.example`, which is not in `CORS_ALLOWED_ORIGINS`, THE SYSTEM SHALL answer 403 without `Access-Control-Allow-Origin`, and with `Origin: http://localhost:4200` it SHALL echo that origin in `Access-Control-Allow-Origin`.",
+      "WHEN any API response is returned THE SYSTEM SHALL include `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` and `Referrer-Policy: strict-origin-when-cross-origin`.",
+      "WHEN `TurnstileCaptchaVerifier` posts to the siteverify URL THE SYSTEM SHALL send form fields `secret`, `response` and `remoteip`, and return false when the answer is `{\"success\":false,\"error-codes\":[\"invalid-input-response\"]}`.",
+      "WHEN siteverify answers `{\"success\":true}` THE SYSTEM SHALL return true, and WHEN the call fails with an I/O error THE SYSTEM SHALL return false.",
+      "WHEN provider `fake` is configured THE SYSTEM SHALL accept only token `XXXX.DUMMY.TOKEN.XXXX`, and WHEN `CaptchaVerifier.Config.create` is called with provider `fake` and profile `prod` active THE SYSTEM SHALL throw `IllegalStateException`."
+    ],
+    "verify": [
+      "(cd backend && ./mvnw -B -ntp test -Dtest=SecurityHardeningIT)   # expect: exit 0, Failures: 0, Errors: 0",
+      "(cd backend && ./mvnw -B -ntp verify)   # expect: exit 0, BUILD SUCCESS — los pasos anteriores siguen verdes"
+    ],
+    "checkpoint": "step-10-antiabuso",
+    "files": [
+      "backend/src/main/java/com/plataformacitas/shared/ratelimit/RateLimiter.java",
+      "backend/src/main/java/com/plataformacitas/shared/captcha/CaptchaVerifier.java",
+      "backend/src/main/java/com/plataformacitas/shared/captcha/TurnstileCaptchaVerifier.java",
+      "backend/src/main/java/com/plataformacitas/identity/internal/AuthService.java",
+      "backend/src/test/java/com/plataformacitas/identity/SecurityHardeningIT.java"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E2-T5",
+    "title": "Correo transaccional y recuperación de contraseña",
+    "epic": "02-identidad-registro",
+    "dependencies": [
+      "E2-T4"
+    ],
+    "priority": "p0",
+    "acceptance": [
+      "WHEN a service publishes an `EmailSender.Message` inside a transaction that commits THE SYSTEM SHALL deliver it exactly once after the commit, and WHEN the transaction rolls back THE SYSTEM SHALL deliver nothing.",
+      "WHEN `POST /api/v1/auth/password/forgot` receives a registered or an unregistered email THE SYSTEM SHALL answer 202 in both cases and send one email with subject `Restablece tu contraseña` only to the registered address, and the 6th request from one IP within an hour SHALL get 429 `RATE_LIMITED`.",
+      "WHEN the emailed token is posted to `POST /api/v1/auth/password/reset` within 1 hour THE SYSTEM SHALL answer 204, accept the new password at login and reject the old one with 401 `INVALID_CREDENTIALS`.",
+      "WHEN the same token is used a second time, or after its 1-hour expiry, THE SYSTEM SHALL answer 400 with code `INVALID_TOKEN`.",
+      "WHEN a password reset completes THE SYSTEM SHALL revoke every active refresh token of the account, so a previous `rt` cookie gets 401 `INVALID_REFRESH_TOKEN`.",
+      "WHEN `bash scripts/smoke-api.sh --expect-demo --expect-mail` runs against Mailpit (SMTP `localhost:1025`) THE SYSTEM SHALL deliver a message to `owner@demo.local` with subject `Restablece tu contraseña`."
+    ],
+    "verify": [
+      "(cd backend && ./mvnw -B -ntp test -Dtest=PasswordResetIT)   # expect: exit 0, Failures: 0, Errors: 0",
+      "(cd backend && ./mvnw -B -ntp verify)   # expect: exit 0, BUILD SUCCESS — los pasos anteriores siguen verdes",
+      "(cd backend && ./mvnw -B -ntp -DskipTests package)   # expect: exit 0",
+      "bash scripts/smoke-api.sh --expect-demo --expect-mail   # expect: exit 0, \"correo: Mailpit recibió …\" y \"SMOKE API OK\""
+    ],
+    "checkpoint": "step-11-correo",
+    "files": [
+      "backend/src/main/java/com/plataformacitas/shared/email/EmailSender.java",
+      "backend/src/main/java/com/plataformacitas/shared/email/EmailConfig.java",
+      "backend/src/main/java/com/plataformacitas/identity/internal/PasswordResetService.java",
+      "backend/src/main/java/com/plataformacitas/identity/internal/AuthController.java",
+      "backend/src/test/java/com/plataformacitas/identity/PasswordResetIT.java"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E2-T6",
+    "title": "Registro autoservicio y crear otro negocio",
+    "epic": "02-identidad-registro",
+    "dependencies": [
+      "E2-T3",
+      "E2-T5"
+    ],
+    "priority": "p0",
+    "acceptance": [
+      "WHEN `POST /api/v1/signup` receives valid data with `acceptTerms` and `acceptDpa` true and captcha token `XXXX.DUMMY.TOKEN.XXXX` THE SYSTEM SHALL answer 202 with `{\"status\":\"VERIFICATION_SENT\"}`, create an unverified `user_account` and send one email with subject `Confirma tu correo` containing a link with `/verificar-correo?token=`.",
+      "WHEN the email already has an account THE SYSTEM SHALL answer 409 `ACCOUNT_EXISTS` without creating a second account, WHEN the captcha token is rejected it SHALL answer 400 `CAPTCHA_FAILED`, and WHEN a 6th signup arrives from one IP within an hour it SHALL answer 429 `RATE_LIMITED`.",
+      "WHEN `POST /api/v1/signup/verify` receives the emailed token THE SYSTEM SHALL, in one transaction, mark the email verified and create the business, its main location, its settings, an OWNER membership, a `TRIAL` subscription ending 30 days later and `legal_acceptance` rows `TERMS` and `DPA` with versions `borrador-2026-10`, and answer 200 with a session for the new business.",
+      "WHEN the vertical seed throws during verification THE SYSTEM SHALL answer 500 `INTERNAL_ERROR` and leave no business, membership or legal acceptance, the account unverified and the token unused.",
+      "WHEN an authenticated account calls `POST /api/v1/businesses` THE SYSTEM SHALL answer 201 and create another business with that same account as OWNER, and `GET /api/v1/auth/me` SHALL list it among `businesses`.",
+      "WHEN a verification token is used a second time THE SYSTEM SHALL answer 400 `INVALID_TOKEN`, and `TenantIsolationIT` SHALL include table `legal_acceptance` in its per-table checks."
+    ],
+    "verify": [
+      "(cd backend && ./mvnw -B -ntp test -Dtest='SignupIT,TenantIsolationIT')   # expect: exit 0, Failures: 0, Errors: 0",
+      "(cd backend && ./mvnw -B -ntp verify)   # expect: exit 0, BUILD SUCCESS — los pasos anteriores siguen verdes"
+    ],
+    "checkpoint": "step-12-registro",
+    "files": [
+      "backend/src/main/resources/db/migration/V4__platform_legal_acceptance.sql",
+      "backend/src/main/java/com/plataformacitas/platform/Businesses.java",
+      "backend/src/main/java/com/plataformacitas/identity/internal/SignupService.java",
+      "backend/src/main/java/com/plataformacitas/identity/internal/SignupController.java",
+      "backend/src/test/java/com/plataformacitas/identity/SignupIT.java"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E2-T7",
+    "title": "Contrato OpenAPI, cliente generado y deriva",
+    "epic": "02-identidad-registro",
+    "dependencies": [
+      "E2-T6"
+    ],
+    "priority": "p0",
+    "acceptance": [
+      "WHEN `OpenApiExportIT` runs with `-Dopenapi.export=true` THE SYSTEM SHALL write the `GET /v3/api-docs` document with keys sorted and LF line endings to `frontend/openapi/openapi.json`, declaring the single server `/`.",
+      "WHEN `npx ng-openapi-gen -c ng-openapi-gen.json` runs in `frontend/` THE SYSTEM SHALL generate `src/app/api/api.ts`, `src/app/api/models.ts`, `src/app/api/fn/auth/login.ts` and `src/app/api/fn/signup/signup.ts`.",
+      "WHEN `bash scripts/check-api-drift.sh` runs on a tree whose committed contract and client match the backend THE SYSTEM SHALL exit 0.",
+      "WHEN the committed client differs from what the current backend generates THE SYSTEM SHALL make `scripts/check-api-drift.sh` exit with code 1, keeping code 2 for usage or tool errors.",
+      "WHEN `npx ng build` runs in `frontend/` with the generated client present THE SYSTEM SHALL exit 0."
+    ],
+    "verify": [
+      "(cd backend && ./mvnw -B -ntp test -Dtest=OpenApiExportIT -Dopenapi.export=true)   # expect: exit 0; escribe frontend/openapi/openapi.json",
+      "(cd frontend && npx ng-openapi-gen -c ng-openapi-gen.json)   # expect: exit 0; escribe frontend/src/app/api/",
+      "test -f frontend/src/app/api/api.ts && test -f frontend/src/app/api/models.ts   # expect: exit 0",
+      "test -f frontend/src/app/api/fn/auth/login.ts && test -f frontend/src/app/api/fn/signup/signup.ts   # expect: exit 0",
+      "node -e 'const j=require(\"./frontend/openapi/openapi.json\"); process.exit(j.servers.length===1 && j.servers[0].url===\"/\" ? 0 : 1)'   # expect: exit 0 — servidor fijo, sin puerto aleatorio",
+      "bash scripts/check-api-drift.sh   # expect: exit 0, \"Contrato y cliente al día\"",
+      "mkdir -p .tmp && cp frontend/src/app/api/api.ts .tmp/api.ts.bak && echo '// deriva' >> frontend/src/app/api/api.ts; rc=0; bash scripts/check-api-drift.sh || rc=$?; cp .tmp/api.ts.bak frontend/src/app/api/api.ts; test \"$rc\" -eq 1   # expect: exit 0 — la deriva simulada produce exactamente el código 1",
+      "(cd frontend && npx ng build)   # expect: exit 0"
+    ],
+    "checkpoint": "step-13-contrato-api",
+    "files": [
+      "backend/src/main/java/com/plataformacitas/shared/openapi/OpenApiConfig.java",
+      "backend/src/test/java/com/plataformacitas/OpenApiExportIT.java",
+      "frontend/ng-openapi-gen.json",
+      "scripts/check-api-drift.sh",
+      "frontend/openapi/openapi.json",
+      "frontend/src/app/api/**"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E3-T1",
+    "title": "Sistema de diseño: tema Material M3, tokens y contraste",
+    "epic": "03-frontend-entrega",
+    "dependencies": [],
+    "priority": "p1",
+    "acceptance": [
+      "WHEN `node scripts/check-contrast.mjs` runs THE SYSTEM SHALL read `frontend/src/styles/_tokens.scss` and exit 0 only if every listed text pair reaches 4.5:1 and every listed UI pair reaches 3:1, in both the light and the dark token sets.",
+      "WHEN `npx ng build` runs in `frontend/` THE SYSTEM SHALL exit 0 with the Angular Material M3 theme (`mat.theme` with `mat.$violet-palette`, `mat.$cyan-palette` and `Inter Variable`) and the `--c-*` tokens compiled into the global stylesheet.",
+      "WHEN `frontend/src/index.html` is read THE SYSTEM SHALL contain `<html lang=\"es-CO\">`.",
+      "WHEN `frontend/angular.json` is parsed THE SYSTEM SHALL list `@fontsource-variable/inter/index.css` before `src/styles.scss` in the build styles, set `inlineCritical` to false in the production configuration and set `proxyConfig` to `proxy.conf.json` for `serve`.",
+      "WHEN `frontend/src/styles.scss` is read THE SYSTEM SHALL contain a `@media (prefers-reduced-motion: reduce)` block and a `:focus-visible` outline that uses `var(--c-primary)`.",
+      "WHEN `npx ng test --watch=false` runs in `frontend/` THE SYSTEM SHALL exit 0."
+    ],
+    "verify": [
+      "node scripts/check-contrast.mjs   # expect: exit 0, \"Contraste OK\"",
+      "(cd frontend && npx ng build)   # expect: exit 0",
+      "grep -q '<html lang=\"es-CO\">' frontend/src/index.html   # expect: exit 0",
+      "node -e 'const a=require(\"./frontend/angular.json\").projects.frontend.architect; const s=a.build.options.styles; const ok=s.indexOf(\"@fontsource-variable/inter/index.css\")===0 && s.indexOf(\"src/styles.scss\")===1 && a.build.configurations.production.optimization.styles.inlineCritical===false && a.serve.options.proxyConfig===\"proxy.conf.json\"; process.exit(ok?0:1)'   # expect: exit 0",
+      "grep -q 'prefers-reduced-motion: reduce' frontend/src/styles.scss && grep -q 'var(--c-primary)' frontend/src/styles.scss   # expect: exit 0",
+      "(cd frontend && npx ng test --watch=false)   # expect: exit 0, todas las pruebas pasan"
+    ],
+    "checkpoint": "step-14-diseno",
+    "files": [
+      "frontend/src/styles/_tokens.scss",
+      "frontend/src/styles.scss",
+      "frontend/angular.json",
+      "frontend/src/index.html",
+      "scripts/check-contrast.mjs"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E3-T2",
+    "title": "Núcleo web: sesión, guardas, etiquetas y shell",
+    "epic": "03-frontend-entrega",
+    "dependencies": [
+      "E2-T7",
+      "E3-T1"
+    ],
+    "priority": "p0",
+    "acceptance": [
+      "WHEN `messageFor` receives an `HttpErrorResponse` with status 409 and body code `SLOT_TAKEN` THE SYSTEM SHALL return `Ese horario acaba de ser tomado. Elige otro.`, and for an unknown code it SHALL return the message mapped to the HTTP status.",
+      "WHEN `authGuard` runs without a session THE SYSTEM SHALL return a `UrlTree` to `/ingresar?volver=<url>`, and WHEN `roleGuard` runs for a route with `data.roles = ['OWNER']` while the session role is `RECEPTION` THE SYSTEM SHALL return a `UrlTree` to `/inicio`.",
+      "WHEN an API call returns 401 and the refresh call succeeds THE SYSTEM SHALL retry the original request once with the new `Authorization: Bearer` token, and WHEN the refresh fails THE SYSTEM SHALL clear the session and navigate to `/ingresar`.",
+      "WHEN `AuthStore.switchBusiness(id)` succeeds THE SYSTEM SHALL replace the session business, reset the labels to `DEFAULT_LABELS` and reload them with `GET /api/v1/business`.",
+      "WHEN `Shell` renders for a session with role `RECEPTION` THE SYSTEM SHALL show menu item `Inicio` and hide `Mi negocio`, and for role `OWNER` with two businesses it SHALL show both items and the business selector.",
+      "WHEN `npx ng build` runs in `frontend/` THE SYSTEM SHALL exit 0 with `LOCALE_ID` `es-CO` and `DEFAULT_CURRENCY_CODE` `COP` provided in `src/app/app.config.ts`."
+    ],
+    "verify": [
+      "(cd frontend && npx ng test --watch=false)   # expect: exit 0, todas las pruebas pasan (incluye core.spec.ts)",
+      "(cd frontend && npx ng build)   # expect: exit 0",
+      "grep -q \"'es-CO'\" frontend/src/app/app.config.ts && grep -q \"'COP'\" frontend/src/app/app.config.ts   # expect: exit 0"
+    ],
+    "checkpoint": "step-15-nucleo-web",
+    "files": [
+      "frontend/src/app/core/auth.ts",
+      "frontend/src/app/core/ui-text.ts",
+      "frontend/src/app/layout/shell.ts",
+      "frontend/src/app/app.config.ts",
+      "frontend/src/app/core/core.spec.ts"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E3-T3",
+    "title": "Pantallas de acceso y registro con rutas perezosas",
+    "epic": "03-frontend-entrega",
+    "dependencies": [
+      "E3-T2"
+    ],
+    "priority": "p0",
+    "acceptance": [
+      "WHEN the login form receives 401 with code `INVALID_CREDENTIALS` THE SYSTEM SHALL show `Correo o contraseña incorrectos.` in an element with `role=\"alert\"`.",
+      "WHEN the login call answers `BUSINESS_SELECTION_REQUIRED` THE SYSTEM SHALL navigate to `/elegir-negocio`, which lists each business as a button with its name.",
+      "WHEN the signup page renders THE SYSTEM SHALL keep the `Crear mi negocio` button disabled until the form is valid and both checkboxes `Acepto los términos de servicio` and `Acepto el acuerdo de encargo de datos` are checked, and with an empty `captchaSiteKey` it SHALL send captcha token `XXXX.DUMMY.TOKEN.XXXX`.",
+      "WHEN `/verificar-correo?token=…` loads THE SYSTEM SHALL call `POST /api/v1/signup/verify`, store the session and navigate to `/inicio`, and on 400 `INVALID_TOKEN` it SHALL show `El enlace no es válido o ya venció.` in an element with `role=\"alert\"`.",
+      "WHEN `grep -rn \"Empleado\" frontend/src/app/features frontend/src/app/layout` runs THE SYSTEM SHALL find no match and exit with code 1, because vertical terms come from `LabelsService`.",
+      "WHEN `npx ng test --watch=false` and `npx ng build` run in `frontend/` THE SYSTEM SHALL exit 0, with `src/app/app.html` equal to `<router-outlet />` and the lazy routes `/ingresar`, `/elegir-negocio`, `/registro`, `/verificar-correo`, `/recuperar-contrasena`, `/restablecer-contrasena`, `/crear-negocio`, `/inicio` and `/mi-negocio` declared in `src/app/app.routes.ts`, and `bash scripts/smoke-web-proxy.sh` prints `SMOKE WEB PROXY OK`."
+    ],
+    "verify": [
+      "(cd frontend && npx ng test --watch=false)   # expect: exit 0, todas las pruebas pasan",
+      "(cd frontend && npx ng build)   # expect: exit 0",
+      "rc=0; grep -rn \"Empleado\" frontend/src/app/features frontend/src/app/layout || rc=$?; test \"$rc\" -eq 1   # expect: exit 0 — grep sale 1 = sin coincidencias (2 sería error de uso y falla)",
+      "for r in ingresar elegir-negocio registro verificar-correo recuperar-contrasena restablecer-contrasena crear-negocio inicio mi-negocio; do grep -q \"path: '$r'\" frontend/src/app/app.routes.ts || exit 1; done   # expect: exit 0",
+      "bash scripts/check-api-drift.sh   # expect: exit 0 — el cliente generado sigue al día",
+      "(cd backend && ./mvnw -B -ntp -DskipTests package)   # expect: exit 0",
+      "bash scripts/smoke-web-proxy.sh   # expect: exit 0, \"SMOKE WEB PROXY OK\" — ng serve reenvía /api a la API y ambos procesos se detienen"
+    ],
+    "checkpoint": "step-16-pantallas-auth",
+    "files": [
+      "frontend/src/app/features/auth/auth-pages.ts",
+      "frontend/src/app/features/auth/auth-pages.spec.ts",
+      "frontend/src/app/app.routes.ts",
+      "frontend/src/app/app.html",
+      "frontend/src/app/app.spec.ts"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E3-T4",
+    "title": "E2E de registro con Mailpit y pipeline de CI",
+    "epic": "03-frontend-entrega",
+    "dependencies": [
+      "E3-T3"
+    ],
+    "priority": "p1",
+    "acceptance": [
+      "WHEN `bash scripts/run-e2e.sh` runs THE SYSTEM SHALL pass `e2e/registro.spec.ts`, in which a visitor registers a business at `/registro` and sees the heading `Revisa tu correo`.",
+      "WHEN that E2E test reads the verification email through the Mailpit API at `http://localhost:8025/api/v1/messages` and opens its `/verificar-correo?token=` link THE SYSTEM SHALL land on `/inicio` with the business name as the `h1`.",
+      "WHEN the same test signs out through `Cuenta` then `Cerrar sesión` and signs in again at `/ingresar` with the same credentials THE SYSTEM SHALL land on `/inicio` with the same `h1`.",
+      "WHEN `.github/workflows/ci.yml` is read THE SYSTEM SHALL define jobs `backend`, `frontend`, `api-contract` and `e2e` that run `./mvnw -B -ntp verify`, `npx ng build`, `npx ng test --watch=false`, `node scripts/check-contrast.mjs`, `bash scripts/check-api-drift.sh` and `bash scripts/run-e2e.sh` on `pull_request` and on pushes to `main`."
+    ],
+    "verify": [
+      "bash scripts/run-e2e.sh   # expect: exit 0, 1 passed, 0 failed",
+      "for c in './mvnw -B -ntp verify' 'npx ng build' 'npx ng test --watch=false' 'node scripts/check-contrast.mjs' 'bash scripts/check-api-drift.sh' 'bash scripts/run-e2e.sh'; do grep -qF \"$c\" .github/workflows/ci.yml || exit 1; done   # expect: exit 0",
+      "for j in 'backend:' 'frontend:' 'api-contract:' 'e2e:'; do grep -qE \"^  $j\" .github/workflows/ci.yml || exit 1; done   # expect: exit 0"
+    ],
+    "checkpoint": "step-17-e2e-ci",
+    "files": [
+      "frontend/e2e/registro.spec.ts",
+      ".github/workflows/ci.yml"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E3-T5",
+    "title": "Imágenes, pila Caddy y workflow de despliegue",
+    "epic": "03-frontend-entrega",
+    "dependencies": [
+      "E3-T3"
+    ],
+    "priority": "p1",
+    "acceptance": [
+      "WHEN `docker build -f deploy/api.Dockerfile -t plataforma-citas-api:local backend/target` runs THE SYSTEM SHALL produce an image based on `eclipse-temurin:25-jre-alpine` whose configured user is `app`.",
+      "WHEN `docker build -f deploy/web.Dockerfile -t plataforma-citas-web:local frontend/dist/frontend/browser` runs THE SYSTEM SHALL produce a `caddy:2.11.7-alpine` image that contains `/srv/index.html`.",
+      "WHEN `bash scripts/smoke-prod-stack.sh` starts `deploy/compose.prod.yml` with those images THE SYSTEM SHALL bring every service up healthy, answer `/` with 401 without credentials and with 200 containing `<app-root` with basic auth, and answer `GET /api/v1/public/config` with 200 and `captchaSiteKey` = `1x00000000000000000000AA`.",
+      "WHEN the API container runs with profile `prod` THE SYSTEM SHALL write ECS JSON log lines that contain the field `@timestamp`, as asserted by `scripts/smoke-prod-stack.sh`.",
+      "WHEN `.github/workflows/deploy.yml` is read THE SYSTEM SHALL be triggered only by `workflow_dispatch`, build with `deploy/api.Dockerfile` and `deploy/web.Dockerfile`, push `plataforma-citas-api` and `plataforma-citas-web` to `ghcr.io`, and run `docker compose` `pull` and `up -d --wait` over SSH."
+    ],
+    "verify": [
+      "(cd backend && ./mvnw -B -ntp -DskipTests package)   # expect: exit 0",
+      "(cd frontend && npx ng build)   # expect: exit 0; deja frontend/dist/frontend/browser/index.html",
+      "test -f frontend/dist/frontend/browser/index.html   # expect: exit 0",
+      "docker build -f deploy/api.Dockerfile -t plataforma-citas-api:local backend/target   # expect: exit 0",
+      "docker build -f deploy/web.Dockerfile -t plataforma-citas-web:local frontend/dist/frontend/browser   # expect: exit 0",
+      "test \"$(docker image inspect plataforma-citas-api:local --format '{{.Config.User}}')\" = app   # expect: exit 0",
+      "docker run --rm --entrypoint test plataforma-citas-web:local -f /srv/index.html   # expect: exit 0",
+      "bash scripts/smoke-prod-stack.sh   # expect: exit 0, \"SMOKE PROD STACK OK\"",
+      "grep -q 'workflow_dispatch' .github/workflows/deploy.yml && grep -q 'deploy/api.Dockerfile' .github/workflows/deploy.yml && grep -q 'deploy/web.Dockerfile' .github/workflows/deploy.yml   # expect: exit 0",
+      "grep -q 'up -d --wait' .github/workflows/deploy.yml && grep -q 'ghcr.io' .github/workflows/deploy.yml   # expect: exit 0"
+    ],
+    "checkpoint": "step-18-despliegue",
+    "files": [
+      "deploy/api.Dockerfile",
+      "deploy/web.Dockerfile",
+      ".github/workflows/deploy.yml"
+    ],
+    "status": "pending"
+  }
+]

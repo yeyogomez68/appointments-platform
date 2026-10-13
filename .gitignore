@@ -1,0 +1,27 @@
+# Llega con la copia de workspace/ en el bootstrap, ANTES del primer commit (blueprint §10).
+# blueprints/ NO se ignora: el bundle del blueprint se versiona con el código.
+
+# Secretos locales. .env.example sí se versiona.
+.env
+.env.*
+!.env.example
+
+# Temporales de scripts y verificaciones
+.tmp/
+
+# Backend
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+
+# Frontend (frontend/.gitignore de Angular cubre además node_modules, dist y .angular)
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+frontend/test-results/
+frontend/playwright-report/
+
+# Sistema y editores
+*.log
+.DS_Store
+Thumbs.db
+.idea/

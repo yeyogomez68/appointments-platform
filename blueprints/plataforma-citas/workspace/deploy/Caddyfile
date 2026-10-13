@@ -1,0 +1,33 @@
+# Caddy de staging (blueprint §12). HTTPS automático cuando SITE_ADDRESS es un dominio.
+# /api/* va a la API sin autenticación básica (la API usa su propio Authorization: Bearer);
+# el resto (la SPA de Angular) queda detrás de autenticación básica mientras staging no sea público.
+# /actuator/* no se publica: solo /api/* llega a la API.
+{
+	admin off
+}
+
+{$SITE_ADDRESS} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	handle /api/* {
+		reverse_proxy api:8080
+	}
+
+	handle {
+		basic_auth {
+			{$BASIC_AUTH_USER} {$BASIC_AUTH_HASH}
+		}
+		header Content-Security-Policy "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}

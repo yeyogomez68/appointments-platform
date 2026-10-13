@@ -118,7 +118,7 @@
       "backend/src/main/resources/db/migration/V2__platform_business.sql",
       "backend/src/test/java/com/plataformacitas/shared/RowLevelSecurityIT.java"
     ],
-    "status": "pending"
+    "status": "done"
   },
   {
     "id": "E1-T5",

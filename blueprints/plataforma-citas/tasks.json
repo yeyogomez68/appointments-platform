@@ -367,7 +367,7 @@
       "backend/src/main/java/com/plataformacitas/identity/internal/SignupController.java",
       "backend/src/test/java/com/plataformacitas/identity/SignupIT.java"
     ],
-    "status": "pending"
+    "status": "done"
   },
   {
     "id": "E2-T7",

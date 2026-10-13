@@ -18,8 +18,6 @@ import java.util.Currency;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
@@ -57,7 +55,7 @@ public class Businesses {
     private final JdbcClient jdbc;
     private final Clock clock;
     private final JsonMapper json;
-    private final Map<String, VerticalSeed> seeds;
+    private final List<VerticalSeed> seeds;
     private final Duration trialLength;
 
     public Businesses(JdbcClient jdbc, Clock clock, JsonMapper json, List<VerticalSeed> seeds,
@@ -65,14 +63,14 @@ public class Businesses {
         this.jdbc = jdbc;
         this.clock = clock;
         this.json = json;
-        this.seeds = seeds.stream().collect(Collectors.toMap(VerticalSeed::vertical, Function.identity()));
+        this.seeds = List.copyOf(seeds);
         this.trialLength = Duration.ofDays(trialDays);
     }
 
     /** Debe llamarse con una transacción abierta dentro de {@code TenantContext.run(businessId, …)}. */
     @Transactional(propagation = Propagation.MANDATORY)
     public BusinessSummary provision(UUID businessId, String name, String vertical, String timezone) {
-        VerticalSeed seed = seeds.get(vertical);
+        VerticalSeed seed = seeds.stream().filter(v -> java.util.Objects.equals(v.vertical(), vertical)).findFirst().orElse(null);
         if (seed == null) {
             throw new DomainException(Code.VALIDATION_ERROR, "Vertical desconocido: " + vertical);
         }
@@ -98,6 +96,19 @@ public class Businesses {
                 .update();
         em.flush();
         return new BusinessSummary(businessId, name.strip(), slug);
+    }
+
+    /** Aceptación de términos ({@code TERMS}) o acuerdo de encargo ({@code DPA}) para el negocio de {@code TenantContext}. */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void recordLegalAcceptance(UUID userId, String document, String version, Instant acceptedAt, String ip) {
+        if (!"TERMS".equals(document) && !"DPA".equals(document)) {
+            throw new DomainException(Code.VALIDATION_ERROR, "Documento legal desconocido: " + document);
+        }
+        jdbc.sql("""
+                insert into legal_acceptance (id, business_id, user_id, document, version, accepted_at, ip_address)
+                values (?, ?, ?, ?, ?, ?, ?)""")
+                .params(UUID.randomUUID(), activeBusiness(), userId, document, version, java.sql.Timestamp.from(acceptedAt), ip)
+                .update();
     }
 
     @Transactional(readOnly = true)

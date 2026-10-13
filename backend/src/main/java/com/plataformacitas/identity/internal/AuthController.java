@@ -8,6 +8,7 @@ import com.plataformacitas.identity.internal.TokenService.IssuedSession;
 import com.plataformacitas.shared.error.DomainException;
 import com.plataformacitas.shared.error.DomainException.Code;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -51,15 +52,21 @@ public class AuthController {
 
     public record MeResponse(UserSummary user, BusinessOption business, List<BusinessOption> businesses) {}
 
+    public record ForgotPasswordRequest(@NotBlank @Email @Size(max = 254) String email) {}
+
+    public record ResetPasswordRequest(@NotBlank String token, @NotBlank @Size(min = 10, max = 128) String newPassword) {}
+
     private final AuthService auth;
     private final TokenService tokens;
+    private final PasswordResetService passwordReset;
     private final boolean secureCookie;
     private final Duration refreshTtl;
 
-    public AuthController(AuthService auth, TokenService tokens, @Value("${app.cookie.secure}") boolean secureCookie,
+    public AuthController(AuthService auth, TokenService tokens, PasswordResetService passwordReset, @Value("${app.cookie.secure}") boolean secureCookie,
             @Value("${app.jwt.refresh-ttl}") Duration refreshTtl) {
         this.auth = auth;
         this.tokens = tokens;
+        this.passwordReset = passwordReset;
         this.secureCookie = secureCookie;
         this.refreshTtl = refreshTtl;
     }
@@ -101,6 +108,18 @@ public class AuthController {
         tokens.revokeFamily(refresh);
         ResponseCookie cleared = cookie("").maxAge(0).build();
         return ResponseEntity.noContent().header(HttpHeaders.SET_COOKIE, cleared.toString()).build();
+    }
+
+    @PostMapping("/password/forgot")
+    public ResponseEntity<Void> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request, HttpServletRequest http) {
+        passwordReset.requestReset(request.email(), http.getRemoteAddr());
+        return ResponseEntity.accepted().build();
+    }
+
+    @PostMapping("/password/reset")
+    public ResponseEntity<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        passwordReset.reset(request.token(), request.newPassword());
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/me")

@@ -336,7 +336,7 @@
       "backend/src/main/java/com/plataformacitas/identity/internal/AuthController.java",
       "backend/src/test/java/com/plataformacitas/identity/PasswordResetIT.java"
     ],
-    "status": "pending"
+    "status": "done"
   },
   {
     "id": "E2-T6",

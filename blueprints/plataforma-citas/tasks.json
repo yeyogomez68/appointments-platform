@@ -241,7 +241,7 @@
       "backend/src/main/java/com/plataformacitas/identity/internal/AuthController.java",
       "backend/src/test/java/com/plataformacitas/identity/AuthFlowIT.java"
     ],
-    "status": "pending"
+    "status": "done"
   },
   {
     "id": "E2-T3",

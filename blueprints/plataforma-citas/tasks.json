@@ -403,7 +403,7 @@
       "frontend/openapi/openapi.json",
       "frontend/src/app/api/**"
     ],
-    "status": "pending"
+    "status": "done"
   },
   {
     "id": "E3-T1",

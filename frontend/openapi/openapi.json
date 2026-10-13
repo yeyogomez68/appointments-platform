@@ -1,0 +1,674 @@
+{
+  "openapi" : "3.1.0",
+  "info" : {
+    "title" : "Plataforma de citas API",
+    "version" : "v1"
+  },
+  "servers" : [ {
+    "url" : "/"
+  } ],
+  "security" : [ {
+    "bearerAuth" : [ ]
+  } ],
+  "paths" : {
+    "/api/v1/auth/login" : {
+      "post" : {
+        "operationId" : "login",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LoginResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "auth" ]
+      }
+    },
+    "/api/v1/auth/logout" : {
+      "post" : {
+        "operationId" : "logout",
+        "parameters" : [ {
+          "in" : "cookie",
+          "name" : "rt",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "auth" ]
+      }
+    },
+    "/api/v1/auth/me" : {
+      "get" : {
+        "operationId" : "me",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MeResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "auth" ]
+      }
+    },
+    "/api/v1/auth/password/forgot" : {
+      "post" : {
+        "operationId" : "forgotPassword",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ForgotPasswordRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "auth" ]
+      }
+    },
+    "/api/v1/auth/password/reset" : {
+      "post" : {
+        "operationId" : "resetPassword",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ResetPasswordRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "auth" ]
+      }
+    },
+    "/api/v1/auth/refresh" : {
+      "post" : {
+        "operationId" : "refresh",
+        "parameters" : [ {
+          "in" : "cookie",
+          "name" : "rt",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SessionResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "auth" ]
+      }
+    },
+    "/api/v1/auth/select-business" : {
+      "post" : {
+        "operationId" : "selectBusiness",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SelectBusinessRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SessionResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "auth" ]
+      }
+    },
+    "/api/v1/auth/switch-business" : {
+      "post" : {
+        "operationId" : "switchBusiness",
+        "parameters" : [ {
+          "in" : "cookie",
+          "name" : "rt",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SelectBusinessRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SessionResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "auth" ]
+      }
+    },
+    "/api/v1/business" : {
+      "get" : {
+        "operationId" : "getBusiness",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/BusinessResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "business" ]
+      },
+      "put" : {
+        "operationId" : "updateBusiness",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateBusinessRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/BusinessResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "business" ]
+      }
+    },
+    "/api/v1/businesses" : {
+      "post" : {
+        "operationId" : "createBusiness",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateBusinessRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/BusinessOption"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "signup" ]
+      }
+    },
+    "/api/v1/public/config" : {
+      "get" : {
+        "operationId" : "publicConfig",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PublicConfig"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "signup" ]
+      }
+    },
+    "/api/v1/signup" : {
+      "post" : {
+        "operationId" : "signup",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SignupRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SignupAccepted"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "signup" ]
+      }
+    },
+    "/api/v1/signup/verify" : {
+      "post" : {
+        "operationId" : "verifySignup",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/VerifySignupRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SessionResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "signup" ]
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "BusinessOption" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "role" : {
+            "type" : "string"
+          },
+          "slug" : {
+            "type" : "string"
+          }
+        }
+      },
+      "BusinessResponse" : {
+        "type" : "object",
+        "properties" : {
+          "currency" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "labels" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "string"
+            }
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "slug" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "timezone" : {
+            "type" : "string"
+          },
+          "trialEndsAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "vertical" : {
+            "type" : "string"
+          }
+        }
+      },
+      "CreateBusinessRequest" : {
+        "type" : "object",
+        "properties" : {
+          "acceptDpa" : {
+            "type" : "boolean"
+          },
+          "acceptTerms" : {
+            "type" : "boolean"
+          },
+          "businessName" : {
+            "type" : "string",
+            "maxLength" : 120,
+            "minLength" : 2
+          },
+          "timezone" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "vertical" : {
+            "type" : "string",
+            "minLength" : 1,
+            "pattern" : "PELUQUERIA"
+          }
+        },
+        "required" : [ "businessName", "timezone", "vertical" ]
+      },
+      "ForgotPasswordRequest" : {
+        "type" : "object",
+        "properties" : {
+          "email" : {
+            "type" : "string",
+            "format" : "email",
+            "maxLength" : 254,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "email" ]
+      },
+      "LoginRequest" : {
+        "type" : "object",
+        "properties" : {
+          "email" : {
+            "type" : "string",
+            "format" : "email",
+            "maxLength" : 254,
+            "minLength" : 0
+          },
+          "password" : {
+            "type" : "string",
+            "maxLength" : 128,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "email", "password" ]
+      },
+      "LoginResponse" : {
+        "type" : "object",
+        "properties" : {
+          "businesses" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/BusinessOption"
+            }
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "preAuthToken" : {
+            "type" : "string"
+          },
+          "session" : {
+            "$ref" : "#/components/schemas/SessionResponse"
+          },
+          "status" : {
+            "type" : "string"
+          }
+        }
+      },
+      "MeResponse" : {
+        "type" : "object",
+        "properties" : {
+          "business" : {
+            "$ref" : "#/components/schemas/BusinessOption"
+          },
+          "businesses" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/BusinessOption"
+            }
+          },
+          "user" : {
+            "$ref" : "#/components/schemas/UserSummary"
+          }
+        }
+      },
+      "PublicConfig" : {
+        "type" : "object",
+        "properties" : {
+          "captchaSiteKey" : {
+            "type" : "string"
+          },
+          "dpaVersion" : {
+            "type" : "string"
+          },
+          "termsVersion" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ResetPasswordRequest" : {
+        "type" : "object",
+        "properties" : {
+          "newPassword" : {
+            "type" : "string",
+            "maxLength" : 128,
+            "minLength" : 10
+          },
+          "token" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        },
+        "required" : [ "newPassword", "token" ]
+      },
+      "SelectBusinessRequest" : {
+        "type" : "object",
+        "properties" : {
+          "businessId" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        },
+        "required" : [ "businessId" ]
+      },
+      "SessionResponse" : {
+        "type" : "object",
+        "properties" : {
+          "accessToken" : {
+            "type" : "string"
+          },
+          "business" : {
+            "$ref" : "#/components/schemas/BusinessOption"
+          },
+          "expiresIn" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "tokenType" : {
+            "type" : "string"
+          }
+        }
+      },
+      "SignupAccepted" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          }
+        }
+      },
+      "SignupRequest" : {
+        "type" : "object",
+        "properties" : {
+          "acceptDpa" : {
+            "type" : "boolean"
+          },
+          "acceptTerms" : {
+            "type" : "boolean"
+          },
+          "businessName" : {
+            "type" : "string",
+            "maxLength" : 120,
+            "minLength" : 2
+          },
+          "captchaToken" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "email" : {
+            "type" : "string",
+            "format" : "email",
+            "maxLength" : 254,
+            "minLength" : 0
+          },
+          "ownerName" : {
+            "type" : "string",
+            "maxLength" : 120,
+            "minLength" : 2
+          },
+          "password" : {
+            "type" : "string",
+            "maxLength" : 128,
+            "minLength" : 10
+          },
+          "timezone" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "vertical" : {
+            "type" : "string",
+            "minLength" : 1,
+            "pattern" : "PELUQUERIA"
+          }
+        },
+        "required" : [ "businessName", "captchaToken", "email", "ownerName", "password", "timezone", "vertical" ]
+      },
+      "UpdateBusinessRequest" : {
+        "type" : "object",
+        "properties" : {
+          "currency" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "name" : {
+            "type" : "string",
+            "maxLength" : 120,
+            "minLength" : 2
+          },
+          "timezone" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        },
+        "required" : [ "currency", "name", "timezone" ]
+      },
+      "UserSummary" : {
+        "type" : "object",
+        "properties" : {
+          "email" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        }
+      },
+      "VerifySignupRequest" : {
+        "type" : "object",
+        "properties" : {
+          "token" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        },
+        "required" : [ "token" ]
+      }
+    },
+    "securitySchemes" : {
+      "bearerAuth" : {
+        "bearerFormat" : "JWT",
+        "scheme" : "bearer",
+        "type" : "http"
+      }
+    }
+  }
+}

@@ -4,7 +4,10 @@ import com.plataformacitas.identity.internal.IdentityStore.MembershipView;
 import com.plataformacitas.identity.internal.TokenService.IssuedSession;
 import com.plataformacitas.shared.error.DomainException;
 import com.plataformacitas.shared.error.DomainException.Code;
+import com.plataformacitas.shared.ratelimit.RateLimiter;
+import com.plataformacitas.shared.ratelimit.RateLimiter.Policy;
 import com.plataformacitas.shared.tenancy.TenantContext;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -30,25 +33,33 @@ public class AuthService {
     private final TokenService tokens;
     private final PasswordEncoder passwordEncoder;
     private final TransactionTemplate tx;
+    private final RateLimiter rateLimiter;
+    private final HttpServletRequest request;
     private volatile String dummyHash;
 
     public AuthService(IdentityStore store, TokenService tokens, PasswordEncoder passwordEncoder,
-            PlatformTransactionManager txManager) {
+            PlatformTransactionManager txManager, RateLimiter rateLimiter, HttpServletRequest request) {
         this.store = store;
         this.tokens = tokens;
         this.passwordEncoder = passwordEncoder;
         this.tx = new TransactionTemplate(txManager);
+        this.rateLimiter = rateLimiter;
+        this.request = request;
     }
 
     public LoginResult login(String email, String password) {
+        String ip = request.getRemoteAddr();
+        if (rateLimiter.isExhausted(Policy.LOGIN_FAILURES, ip)) {
+            throw new DomainException(Code.RATE_LIMITED, "Demasiados intentos. Espera un minuto e inténtalo de nuevo.");
+        }
         Optional<UserAccount> found = tx.execute(s -> store.findByEmail(email));
         if (found.isEmpty()) {
             passwordEncoder.matches(password == null ? "" : password, dummyHash());
-            throw badCredentials();
+            throw badCredentials(ip);
         }
         UserAccount account = found.get();
         if (!store.passwordMatches(account, password) || !account.isActive()) {
-            throw badCredentials();
+            throw badCredentials(ip);
         }
         if (!account.isEmailVerified()) {
             throw new DomainException(Code.EMAIL_NOT_VERIFIED, "Confirma tu correo antes de iniciar sesión.");
@@ -97,7 +108,9 @@ public class AuthService {
         return dummyHash;
     }
 
-    private static DomainException badCredentials() {
+    /** Cada intento fallido consume una ficha del límite por IP. */
+    private DomainException badCredentials(String ip) {
+        rateLimiter.tryConsume(Policy.LOGIN_FAILURES, ip);
         return new DomainException(Code.INVALID_CREDENTIALS, BAD_CREDENTIALS);
     }
 }

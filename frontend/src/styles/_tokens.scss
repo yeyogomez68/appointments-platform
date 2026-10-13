@@ -1,0 +1,91 @@
+// Tokens del sistema de diseño (blueprint §7). Componentes: solo var(--…), nunca hex ni px sueltos.
+// Claro por defecto; oscuro por preferencia del sistema o con [data-theme='dark'] en <html>.
+
+@mixin light-tokens {
+  --c-bg: #F7F8FC;
+  --c-surface: #FFFFFF;
+  --c-surface-2: #F1F3F9;
+  --c-border: #E3E6EF;
+  --c-border-strong: #767D90;
+  --c-text: #141826;
+  --c-text-muted: #5B6275;
+  --c-primary: #5B4FE9;
+  --c-primary-hover: #4A3FD6;
+  --c-on-primary: #FFFFFF;
+  --c-accent: #0FA3A3;
+  --c-success: #12A150;
+  --c-warning: #D97706;
+  --c-danger: #E5484D;
+  --c-info: #2F80ED;
+  --c-success-text: #0B7A3B;
+  --c-warning-text: #9A5404;
+  --c-danger-text: #C42F35;
+  --c-info-text: #1F66C9;
+}
+
+@mixin dark-tokens {
+  --c-bg: #0E1018;
+  --c-surface: #161A25;
+  --c-surface-2: #1E2331;
+  --c-border: #2A3042;
+  --c-border-strong: #6B748C;
+  --c-text: #EEF0F6;
+  --c-text-muted: #9AA2B5;
+  --c-primary: #8B83FF;
+  --c-primary-hover: #A39DFF;
+  --c-on-primary: #0E1018;
+  --c-accent: #2CC7C7;
+  --c-success: #3DD68C;
+  --c-warning: #F5A524;
+  --c-danger: #FF6B6F;
+  --c-info: #5EA2FF;
+  --c-success-text: #3DD68C;
+  --c-warning-text: #F5A524;
+  --c-danger-text: #FF6B6F;
+  --c-info-text: #5EA2FF;
+}
+
+:root {
+  @include light-tokens;
+  color-scheme: light;
+
+  --font-sans: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --fs-12: 0.75rem;
+  --fs-14: 0.875rem;
+  --fs-16: 1rem;
+  --fs-20: 1.25rem;
+  --fs-24: 1.5rem;
+  --fs-32: 2rem;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+
+  --radius-control: 10px;
+  --radius-card: 14px;
+
+  --shadow-1: 0 1px 2px rgb(20 24 38 / 0.06), 0 1px 3px rgb(20 24 38 / 0.08);
+  --shadow-2: 0 4px 12px rgb(20 24 38 / 0.10);
+
+  --motion-fast: 150ms;
+  --motion-base: 200ms;
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+
+  --content-max: 1200px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    @include dark-tokens;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme='dark'] {
+  @include dark-tokens;
+  color-scheme: dark;
+}

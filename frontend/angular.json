@@ -30,6 +30,7 @@
               }
             ],
             "styles": [
+              "@fontsource-variable/inter/index.css",
               "src/styles.scss"
             ]
           },
@@ -47,7 +48,15 @@
                   "maximumError": "8kB"
                 }
               ],
-              "outputHashing": "all"
+              "outputHashing": "all",
+              "optimization": {
+                "scripts": true,
+                "styles": {
+                  "minify": true,
+                  "inlineCritical": false
+                },
+                "fonts": true
+              }
             },
             "development": {
               "optimization": false,
@@ -67,7 +76,10 @@
               "buildTarget": "frontend:build:development"
             }
           },
-          "defaultConfiguration": "development"
+          "defaultConfiguration": "development",
+          "options": {
+            "proxyConfig": "proxy.conf.json"
+          }
         },
         "test": {
           "builder": "@angular/build:unit-test"

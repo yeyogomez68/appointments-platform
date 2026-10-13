@@ -1,1 +1,126 @@
-/* You can add global styles to this file, and also import other style files */
+@use '@angular/material' as mat;
+@use './styles/tokens';
+
+html {
+  @include mat.theme((
+    color: (
+      primary: mat.$violet-palette,
+      tertiary: mat.$cyan-palette,
+      theme-type: color-scheme,
+    ),
+    typography: 'Inter Variable',
+    density: 0,
+  ));
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--c-bg);
+  color: var(--c-text);
+  font-family: var(--font-sans);
+  font-size: var(--fs-16);
+  line-height: 1.5;
+}
+
+h1 {
+  font-size: var(--fs-24);
+  line-height: 1.25;
+  font-weight: 650;
+  margin: 0 0 var(--space-4);
+}
+
+h2 {
+  font-size: var(--fs-20);
+  line-height: 1.3;
+  font-weight: 600;
+  margin: 0 0 var(--space-3);
+}
+
+a {
+  color: var(--c-primary);
+}
+
+.tabular,
+.money,
+.time {
+  font-variant-numeric: tabular-nums;
+}
+
+.card {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-1);
+  padding: var(--space-6);
+}
+
+.muted {
+  color: var(--c-text-muted);
+}
+
+.error-text {
+  color: var(--c-danger-text);
+}
+
+.skip-link {
+  position: absolute;
+  left: var(--space-2);
+  top: -48px;
+  padding: var(--space-2) var(--space-4);
+  background: var(--c-surface);
+  border-radius: var(--radius-control);
+  z-index: 1000;
+}
+
+.skip-link:focus {
+  top: var(--space-2);
+}
+
+:focus-visible {
+  outline: 2px solid var(--c-primary);
+  outline-offset: 2px;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  transition:
+    background-color var(--motion-fast) var(--ease-out),
+    border-color var(--motion-fast) var(--ease-out),
+    color var(--motion-fast) var(--ease-out);
+}
+
+// Tablas densas en escritorio (recepción); cómodas en celular.
+@media (min-width: 1024px) {
+  .dense-table {
+    @include mat.theme((density: -2));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -435,7 +435,7 @@
       "frontend/src/index.html",
       "scripts/check-contrast.mjs"
     ],
-    "status": "pending"
+    "status": "done"
   },
   {
     "id": "E3-T2",
